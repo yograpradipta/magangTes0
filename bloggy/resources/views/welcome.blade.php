@@ -9,87 +9,151 @@
 
         <!-- Fonts -->
         <link href="https://fonts.googleapis.com/css?family=Raleway:100,600" rel="stylesheet" type="text/css">
-
+        <link href="{{ asset('style.css') }}" rel="stylesheet" />
+        <link href="{{ asset('datatable.css') }}" rel="stylesheet" />
         <!-- Styles -->
         <style>
-            html, body {
-                background-color: #fff;
-                color: #636b6f;
-                font-family: 'Raleway', sans-serif;
-                font-weight: 100;
-                height: 100vh;
-                margin: 0;
+
+
+            body {
+                padding-top: 20px;
+                padding-bottom: 100px;
             }
 
-            .full-height {
-                height: 100vh;
-            }
-
-            .flex-center {
-                align-items: center;
-                display: flex;
-                justify-content: center;
-            }
-
-            .position-ref {
-                position: relative;
-            }
-
-            .top-right {
-                position: absolute;
-                right: 10px;
-                top: 18px;
-            }
-
-            .content {
-                text-align: center;
-            }
-
-            .title {
-                font-size: 84px;
-            }
-
-            .links > a {
-                color: #636b6f;
-                padding: 0 25px;
-                font-size: 12px;
-                font-weight: 600;
-                letter-spacing: .1rem;
-                text-decoration: none;
-                text-transform: uppercase;
-            }
-
-            .m-b-md {
-                margin-bottom: 30px;
+            .navbar {
+                margin-bottom: 20px;
             }
         </style>
     </head>
     <body>
-        <div class="flex-center position-ref full-height">
-            @if (Route::has('login'))
-                <div class="top-right links">
-                    @if (Auth::check())
-                        <a href="{{ url('/home') }}">Home</a>
-                    @else
-                        <a href="{{ url('/login') }}">Login</a>
-                        <a href="{{ url('/register') }}">Register</a>
-                    @endif
-                </div>
-            @endif
 
-            <div class="content">
-                <div class="title m-b-md">
-                    Laravel
-                </div>
+      <div class="container">
+        <div class="content">
+            <h3>Data Barang</h3>
 
-                <div class="links">
-                    <a href="https://laravel.com/docs">Documentation</a>
-                    <a href="https://laracasts.com">Laracasts</a>
-                    <a href="https://laravel-news.com">News</a>
-                    <a href="https://forge.laravel.com">Forge</a>
-                    <a href="https://github.com/laravel/laravel">GitHub</a>
-                </div>
-            </div>
+            <table id="comments" class="display table table-responsive table-bordered" width="100%" cellspacing="0">
+                <thead>
+                    <tr>
+                        <th>nama barang</th>
+                        <th>jumlah</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tfoot>
+                    <tr>
+                        <td>nama_barang </td>
+                        <td>jumlah</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
         </div>
+      </div>
+
+      <script src="{{ asset('script.js') }}"></script>
+        <script src="{{ asset('datatables.js') }}"></script>
+        <script>
+            var apiUrl = "http://127.0.0.1:8080/api/databarang";
+            var DataTable_Comments = $('#comments').DataTable({
+                "processing": true,
+                "ajax": {
+                    "url": apiUrl,
+                    "dataSrc": ""
+                },
+                "columns": [
+                    { "data": "nama_barang" },
+                    { "data": "jumlah" },
+                    { "data": "id",
+                        "render": function(data, type, row, meta) {
+                        return '<button type="button" class="btn btn-link btn-sm" onclick="editForm('+data+')" title="Edit"><i class="glyphicon glyphicon-pencil"></i></button>' + '&emsp;' +
+                        '<button type="button" data-id="'+data+'" class="btn btn-link btn-sm" onclick="destroy('+data+', this)" title="Hapus"><i class="glyphicon glyphicon-trash"></i></button>'
+                    } }
+                ],
+                "pagingType": "simple_numbers"
+            });
+
+            $('#comments tfoot tr td').each(function() {
+                $(this).html( '<input type="text" class="form-control input-sm" style="width: 100%" placeholder="Search '+$(this).text()+'" />' );
+            });
+
+            DataTable_Comments.columns().every(function() {
+                var th = this;
+                $('input', this.footer()).on('keyup change', function() {
+                    if(th.search() !== this.value) {
+                        th.search(this.value).draw();
+                    }
+                });
+            });
+
+            function editForm(id) {
+                var _this = this;
+                $.getJSON({
+                    url: apiUrl + '/' + id,
+                    success: function(d) {
+                        bootbox.dialog({
+                            title: 'Edit Data #' + d.id,
+                            message: _this.form(d),
+                            buttons: {
+                                main: {
+                                    label: 'Save',
+                                    className: 'btn-info btn-sm',
+                                    callback: function() {
+                                        _this.putForm(d.id, $('form.editForm').serialize());
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+
+            function putForm(id, serializeData) {
+                $.ajax({
+                    url: apiUrl + '/' + id,
+                    type: 'PUT',
+                    data: serializeData,
+                    success: function(res) {
+                        bootbox.alert('Success Edit Data #' + res.id);
+                        console.log('[EDIT] Message From Server: ' + JSON.stringify(res));
+                        DataTable_Comments.draw();
+                    }
+                });
+            }
+
+            function form(d) {
+                var _form = $('<form></form>').addClass('editForm').addClass('form').attr('role', 'form');
+
+                var inputName = _form.append($('<div></div>').addClass('form-group'));
+                inputName.append($('<label></label>').addClass('label-control').text('nama barang'));
+                inputName.append($('<input></input>').addClass('form-control').attr('name', 'nama_barang').attr('type', 'text').val(d.nama_barang));
+
+                var inputJumlah = _form.append($('<div></div>').addClass('form-group'));
+                inputJumlah.append($('<label></label>').addClass('label-control').text('jumlah'));
+                inputJumlah.append($('<input></input>').addClass('form-control').attr('name', 'jumlah').attr('type', 'text').val(d.jumlah));
+
+
+                return _form;
+            }
+
+            function destroy(id, comp) {
+                var target = $(comp).closest('tr').get(0);
+                bootbox.confirm('Are You Sure', function(res) {
+                    if(res == true) {
+                        $.ajax({
+                            url: apiUrl + '/' + id,
+                            type: 'DELETE',
+                            success: function(r) {
+                                // bootbox.alert('[DELETE] Message From Server: ' + JSON.stringify(r));
+                                target.remove();
+                                console.log('[DELETE] Message From Server: ' + JSON.stringify(r));
+                            }
+                        });
+                    }
+                });
+
+                return true;
+            }
+        </script>
+
     </body>
 </html>
